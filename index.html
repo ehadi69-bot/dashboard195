@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد شکایات ۱۹۵</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #f8fafc; }
+        .card { background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="p-4 text-gray-800">
+    <div class="max-w-6xl mx-auto">
+        <div class="bg-blue-800 text-white p-4 rounded-xl text-center mb-4">
+            <h1 class="text-xl font-bold">📊 داشبورد تحلیلی شکایات ۱۹۵</h1>
+        </div>
+
+        <div id="upload" class="card text-center border-2 border-dashed border-gray-300 mb-4">
+            <p class="mb-4">۴ فایل اکسل فصل‌های ۱۴۰۴ را انتخاب کنید تا داشبورد ساخته شود</p>
+            <input type="file" id="files" multiple accept=".xlsx" class="hidden">
+            <label for="files" class="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer">انتخاب فایل‌ها</label>
+        </div>
+
+        <div id="app" class="hidden grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="md:col-span-1 space-y-4">
+                <div class="card">
+                    <h3 class="font-bold mb-3 border-b pb-2">🎛️ فیلترها</h3>
+                    <select id="fSeason" class="w-full p-2 border rounded mb-2" onchange="update()"><option value="all">همه فصول</option></select>
+                    <select id="fProvince" class="w-full p-2 border rounded mb-2" onchange="update()"><option value="all">همه استان‌ها</option></select>
+                    <select id="fOperator" class="w-full p-2 border rounded mb-2" onchange="update()"><option value="all">همه اپراتورها</option></select>
+                </div>
+            </div>
+            <div class="md:col-span-3 space-y-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="card text-center"><p class="text-xs text-gray-500">کل شکایات</p><p id="k1" class="text-xl font-bold text-blue-800">0</p></div>
+                    <div class="card text-center"><p class="text-xs text-gray-500">میانگین زمان (روز)</p><p id="k2" class="text-xl font-bold text-blue-800">0</p></div>
+                    <div class="card text-center"><p class="text-xs text-gray-500">در مهلت</p><p id="k3" class="text-xl font-bold text-green-600">0%</p></div>
+                    <div class="card text-center"><p class="text-xs text-gray-500">رضایت مشتری</p><p id="k4" class="text-xl font-bold text-purple-600">0%</p></div>
+                </div>
+                <div class="card"><canvas id="c1"></canvas></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="card"><canvas id="c2"></canvas></div>
+                    <div class="card"><canvas id="c3"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let data = [], filtered = [], charts = {};
+        document.getElementById('files').addEventListener('change', e => {
+            let files = e.target.files, read = 0;
+            data = [];
+            Array.from(files).forEach(f => {
+                let reader = new FileReader();
+                reader.onload = e => {
+                    let wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+                    let json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""});
+                    let season = f.name.includes('بهار')?'بهار':f.name.includes('تابستان')?'تابستان':f.name.includes('پاییز')?'پاییز':f.name.includes('زمستان')?'زمستان':'نامشخص';
+                    json.forEach(r => {
+                        r['فصل'] = season + ' 1404';
+                        r['ماه'] = (r['ماه ثبت']||"").replace(' 1404','');
+                        r['زمان'] = (r['زمان كل (ساعت كاري)']=='*' || !r['زمان كل (ساعت كاري)']) ? 0 : parseInt(r['زمان كل (ساعت كاري)']);
+                    });
+                    data = data.concat(json);
+                    if(++read == files.length) { document.getElementById('upload').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); init(); }
+                };
+                reader.readAsArrayBuffer(f);
+            });
+        });
+
+        function init() {
+            ['fSeason','fProvince','fOperator'].forEach(id => {
+                let key = id.replace('f','').replace('Season','فصل').replace('Province','استان').replace('Operator','اپراتور');
+                [...new Set(data.map(r => r[key]))].sort().forEach(v => {
+                    let opt = document.createElement('option'); opt.value = v; opt.text = v;
+                    document.getElementById(id).appendChild(opt);
+                });
+            });
+            update();
+        }
+
+        function update() {
+            let s = document.getElementById('fSeason').value;
+            let p = document.getElementById('fProvince').value;
+            let o = document.getElementById('fOperator').value;
+            
+            filtered = data.filter(r => (s=='all'||r['فصل']==s) && (p=='all'||r['استان']==p) && (o=='all'||r['اپراتور']==o));
+            
+            document.getElementById('k1').innerText = filtered.length.toLocaleString('fa-IR');
+            document.getElementById('k2').innerText = (filtered.reduce((a,b)=>a+b.زمان,0)/(filtered.length||1)/8).toFixed(1);
+            document.getElementById('k3').innerText = ((filtered.filter(r=>r.زمان>0 && r.زمان<=r['مهلت پاسخگويي منطقه (ساعت كاري)']).length/(filtered.length||1))*100).toFixed(0)+'%';
+            document.getElementById('k4').innerText = ((filtered.filter(r=>['زياد','بسيار زياد'].includes(r['ميزان رضايت مشتركين'])).length/(filtered.length||1))*100).toFixed(0)+'%';
+
+            Object.values(charts).forEach(c => c.destroy());
+            
+            // Chart 1: Monthly
+            let m = {};
+            filtered.forEach(r => m[r['ماه']] = (m[r['ماه']]||0)+1);
+            let mOrder = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+            let mLabels = Object.keys(m).sort((a,b)=>mOrder.indexOf(a)-mOrder.indexOf(b));
+            charts.c1 = new Chart(document.getElementById('c1'), {type:'line', data:{labels:mLabels, datasets:[{label:'شکایات', data:mLabels.map(l=>m[l]), borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,0.1)', fill:true}]}});
+
+            // Chart 2: Subjects
+            let sub = {};
+            filtered.forEach(r => sub[r['موضوع شكايت']] = (sub[r['موضوع شكايت']]||0)+1);
+            let topSub = Object.entries(sub).sort((a,b)=>b[1]-a[1]).slice(0,7);
+            charts.c2 = new Chart(document.getElementById('c2'), {type:'bar', data:{labels:topSub.map(s=>s[0]), datasets:[{data:topSub.map(s=>s[1]), backgroundColor:'#10b981'}]}, options:{indexAxis:'y', plugins:{legend:{display:false}}}});
+
+            // Chart 3: Operators
+            let op = {};
+            filtered.forEach(r => { if(!op[r['اپراتور']]) op[r['اپراتور']]={c:0,t:0}; op[r['اپراتور']].c++; op[r['اپراتور']].t+=r.زمان; });
+            let opL = Object.keys(op);
+            charts.c3 = new Chart(document.getElementById('c3'), {type:'bar', data:{labels:opL, datasets:[{label:'تعداد', data:opL.map(l=>op[l].c), backgroundColor:'#3b82f6'}, {label:'زمان', data:opL.map(l=>op[l].t/op[l].c), backgroundColor:'#ec4899'}]}});
+        }
+    </script>
+</body>
+</html>
