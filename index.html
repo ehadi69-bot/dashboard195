@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد شکایات ۱۹۵</title>
+    <title>داشبورد تحلیلی شکایات ۱۹۵</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -11,111 +11,254 @@
     <style>
         body { font-family: 'Vazirmatn', sans-serif; background-color: #f8fafc; }
         .card { background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .kpi-card { border-right: 4px solid #2563eb; }
     </style>
 </head>
 <body class="p-4 text-gray-800">
-    <div class="max-w-6xl mx-auto">
-        <div class="bg-blue-800 text-white p-4 rounded-xl text-center mb-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-gradient-to-l from-blue-800 to-blue-600 text-white p-4 rounded-xl text-center mb-4">
             <h1 class="text-xl font-bold">📊 داشبورد تحلیلی شکایات ۱۹۵</h1>
+            <p class="opacity-90 mt-1 text-sm">گزارش مقایسه‌ای و تحلیل شکایات</p>
         </div>
 
         <div id="upload" class="card text-center border-2 border-dashed border-gray-300 mb-4">
-            <p class="mb-4">۴ فایل اکسل فصل‌های ۱۴۰۴ را انتخاب کنید تا داشبورد ساخته شود</p>
+            <p class="mb-4 text-lg">فایل‌های اکسل را انتخاب کنید (می‌توانید یک یا چند فایل را با هم انتخاب کنید)</p>
             <input type="file" id="files" multiple accept=".xlsx" class="hidden">
-            <label for="files" class="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer">انتخاب فایل‌ها</label>
+            <label for="files" class="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer inline-block">انتخاب فایل‌ها</label>
+            <div id="uploadStatus" class="mt-4 text-sm text-gray-600"></div>
+            <button id="startBtn" onclick="startDashboard()" class="hidden bg-green-600 text-white px-6 py-3 rounded-lg cursor-pointer inline-block mt-4">ساخت داشبورد</button>
         </div>
 
-        <div id="app" class="hidden grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="md:col-span-1 space-y-4">
-                <div class="card">
-                    <h3 class="font-bold mb-3 border-b pb-2">🎛️ فیلترها</h3>
-                    <select id="fSeason" class="w-full p-2 border rounded mb-2" onchange="update()"><option value="all">همه فصول</option></select>
-                    <select id="fProvince" class="w-full p-2 border rounded mb-2" onchange="update()"><option value="all">همه استان‌ها</option></select>
-                    <select id="fOperator" class="w-full p-2 border rounded mb-2" onchange="update()"><option value="all">همه اپراتورها</option></select>
+        <div id="app" class="hidden">
+            <div class="flex flex-col lg:flex-row gap-4">
+                <div class="lg:w-1/5">
+                    <div class="card sticky top-4 space-y-3">
+                        <h3 class="font-bold border-b pb-2">🎛️ فیلترها</h3>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">سال</label>
+                            <select id="fYear" class="w-full p-2 border rounded text-sm" onchange="applyFilters()"><option value="all">همه</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">فصل</label>
+                            <select id="fSeason" class="w-full p-2 border rounded text-sm" onchange="applyFilters()"><option value="all">همه</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">ماه</label>
+                            <select id="fMonth" class="w-full p-2 border rounded text-sm" onchange="applyFilters()"><option value="all">همه</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">استان</label>
+                            <select id="fProvince" class="w-full p-2 border rounded text-sm" onchange="applyFilters()"><option value="all">همه</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">نوع پروانه</label>
+                            <select id="fLicense" class="w-full p-2 border rounded text-sm" onchange="applyFilters()"><option value="all">همه</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">موضوع شکایت</label>
+                            <select id="fSubject" class="w-full p-2 border rounded text-sm" onchange="applyFilters()"><option value="all">همه</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">اپراتور</label>
+                            <select id="fOperator" class="w-full p-2 border rounded text-sm" onchange="applyFilters()"><option value="all">همه</option></select>
+                        </div>
+                        <button onclick="resetFilters()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded text-sm transition">🔄 پاک کردن فیلترها</button>
+                    </div>
                 </div>
-            </div>
-            <div class="md:col-span-3 space-y-4">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="card text-center"><p class="text-xs text-gray-500">کل شکایات</p><p id="k1" class="text-xl font-bold text-blue-800">0</p></div>
-                    <div class="card text-center"><p class="text-xs text-gray-500">میانگین زمان (روز)</p><p id="k2" class="text-xl font-bold text-blue-800">0</p></div>
-                    <div class="card text-center"><p class="text-xs text-gray-500">در مهلت</p><p id="k3" class="text-xl font-bold text-green-600">0%</p></div>
-                    <div class="card text-center"><p class="text-xs text-gray-500">رضایت مشتری</p><p id="k4" class="text-xl font-bold text-purple-600">0%</p></div>
-                </div>
-                <div class="card"><canvas id="c1"></canvas></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="card"><canvas id="c2"></canvas></div>
-                    <div class="card"><canvas id="c3"></canvas></div>
+
+                <div class="lg:w-4/5 space-y-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="card kpi-card text-center">
+                            <p class="text-xs text-gray-500">کل شکایات</p>
+                            <p id="k1" class="text-xl font-bold text-blue-800">0</p>
+                        </div>
+                        <div class="card kpi-card text-center">
+                            <p class="text-xs text-gray-500">میانگین زمان (روز)</p>
+                            <p id="k2" class="text-xl font-bold text-blue-800">0</p>
+                        </div>
+                        <div class="card kpi-card text-center">
+                            <p class="text-xs text-gray-500">در مهلت</p>
+                            <p id="k3" class="text-xl font-bold text-green-600">0%</p>
+                        </div>
+                        <div class="card kpi-card text-center">
+                            <p class="text-xs text-gray-500">رضایت مشتری</p>
+                            <p id="k4" class="text-xl font-bold text-purple-600">0%</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="card md:col-span-2">
+                            <h3 class="font-bold mb-2 text-sm">📈 روند ماهانه شکایات</h3>
+                            <div style="height: 300px;"><canvas id="c1"></canvas></div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3 class="font-bold mb-2 text-sm">🏆 ۱۰ موضوع پرتکرار</h3>
+                            <div style="height: 350px;"><canvas id="c2"></canvas></div>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="font-bold mb-2 text-sm">🥧 توزیع استانی</h3>
+                            <div style="height: 350px;"><canvas id="c3"></canvas></div>
+                        </div>
+
+                        <div class="card md:col-span-2">
+                            <h3 class="font-bold mb-2 text-sm">📡 مقایسه اپراتورها</h3>
+                            <div style="height: 300px;"><canvas id="c4"></canvas></div>
+                        </div>
+
+                        <div class="card md:col-span-2">
+                            <h3 class="font-bold mb-2 text-sm">⏱️ توزیع زمان پاسخگویی (روز)</h3>
+                            <div style="height: 250px;"><canvas id="c5"></canvas></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        let data = [], filtered = [], charts = {};
-        document.getElementById('files').addEventListener('change', e => {
-            let files = e.target.files, read = 0;
-            data = [];
-            Array.from(files).forEach(f => {
-                let reader = new FileReader();
-                reader.onload = e => {
-                    let wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
-                    let json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""});
-                    let season = f.name.includes('بهار')?'بهار':f.name.includes('تابستان')?'تابستان':f.name.includes('پاییز')?'پاییز':f.name.includes('زمستان')?'زمستان':'نامشخص';
-                    json.forEach(r => {
-                        r['فصل'] = season + ' 1404';
-                        r['ماه'] = (r['ماه ثبت']||"").replace(' 1404','');
-                        r['زمان'] = (r['زمان كل (ساعت كاري)']=='*' || !r['زمان كل (ساعت كاري)']) ? 0 : parseInt(r['زمان كل (ساعت كاري)']);
-                    });
-                    data = data.concat(json);
-                    if(++read == files.length) { document.getElementById('upload').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); init(); }
-                };
-                reader.readAsArrayBuffer(f);
-            });
-        });
+        let rawData = [], filteredData = [], charts = {};
+        let filesProcessed = 0;
+        const monthOrder = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
-        function init() {
-            ['fSeason','fProvince','fOperator'].forEach(id => {
-                let key = id.replace('f','').replace('Season','فصل').replace('Province','استان').replace('Operator','اپراتور');
-                [...new Set(data.map(r => r[key]))].sort().forEach(v => {
-                    let opt = document.createElement('option'); opt.value = v; opt.text = v;
-                    document.getElementById(id).appendChild(opt);
-                });
+        document.getElementById('files').addEventListener('change', handleFiles, false);
+
+        function handleFiles(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            document.getElementById('uploadStatus').innerHTML = `<p class="text-blue-600">در حال پردازش فایل‌ها...</p>`;
+            
+            let filesRead = 0;
+            const currentBatch = files.length;
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, {type: 'array'});
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    let json = XLSX.utils.sheet_to_json(ws, {defval: ""});
+                    
+                    json.forEach(row => {
+                        let monthStr = row['ماه ثبت'] || "";
+                        let parts = monthStr.split(' ');
+                        row['ماه'] = parts[0] || "نامشخص";
+                        row['سال'] = parts[1] || "نامشخص";
+                        
+                        let time = row['زمان كل (ساعت كاري)'];
+                        row['زمان'] = (time === '*' || time === "" || isNaN(parseInt(time))) ? 0 : parseInt(time);
+                        row['نوع پروانه'] = row['نوع پروانه'] || "نامشخص";
+                    });
+                
+                    rawData = rawData.concat(json);
+                    filesRead++;
+
+                    if (filesRead === currentBatch) {
+                        filesProcessed += currentBatch;
+                        document.getElementById('uploadStatus').innerHTML = `<p class="text-green-600">✅ ${filesProcessed} فایل بارگذاری شد. در صورت نیاز فایل‌های بیشتری را انتخاب کنید، در غیر این صورت روی دکمه زیر کلیک کنید.</p>`;
+                        document.getElementById('startBtn').classList.remove('hidden');
+                        e.target.value = ''; // reset input to allow adding same file again if needed
+                    }
+                };
+                reader.readAsArrayBuffer(file);
             });
-            update();
         }
 
-        function update() {
-            let s = document.getElementById('fSeason').value;
-            let p = document.getElementById('fProvince').value;
-            let o = document.getElementById('fOperator').value;
-            
-            filtered = data.filter(r => (s=='all'||r['فصل']==s) && (p=='all'||r['استان']==p) && (o=='all'||r['اپراتور']==o));
-            
-            document.getElementById('k1').innerText = filtered.length.toLocaleString('fa-IR');
-            document.getElementById('k2').innerText = (filtered.reduce((a,b)=>a+b.زمان,0)/(filtered.length||1)/8).toFixed(1);
-            document.getElementById('k3').innerText = ((filtered.filter(r=>r.زمان>0 && r.زمان<=r['مهلت پاسخگويي منطقه (ساعت كاري)']).length/(filtered.length||1))*100).toFixed(0)+'%';
-            document.getElementById('k4').innerText = ((filtered.filter(r=>['زياد','بسيار زياد'].includes(r['ميزان رضايت مشتركين'])).length/(filtered.length||1))*100).toFixed(0)+'%';
+        function startDashboard() {
+            document.getElementById('upload').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            populateFilters();
+            applyFilters();
+        }
 
+        function populateFilters() {
+            const filters = {
+                'fYear': [...new Set(rawData.map(item => item['سال']))].sort(),
+                'fSeason': [...new Set(rawData.map(item => item['فصل']))].sort(),
+                'fMonth': [...new Set(rawData.map(item => item['ماه']))].sort(),
+                'fProvince': [...new Set(rawData.map(item => item['استان']))].sort(),
+                'fLicense': [...new Set(rawData.map(item => item['نوع پروانه']))].sort(),
+                'fSubject': [...new Set(rawData.map(item => item['موضوع شكايت']))].sort(),
+                'fOperator': [...new Set(rawData.map(item => item['اپراتور']))].sort()
+            };
+
+            for (const [id, values] of Object.entries(filters)) {
+                const select = document.getElementById(id);
+                values.forEach(val => {
+                    if(val && val !== "نامشخص") {
+                        let opt = document.createElement('option');
+                        opt.value = val;
+                        opt.text = val;
+                        select.appendChild(opt);
+                    }
+                });
+            }
+        }
+
+        function applyFilters() {
+            const year = document.getElementById('fYear').value;
+            const season = document.getElementById('fSeason').value;
+            const month = document.getElementById('fMonth').value;
+            const province = document.getElementById('fProvince').value;
+            const license = document.getElementById('fLicense').value;
+            const subject = document.getElementById('fSubject').value;
+            const operator = document.getElementById('fOperator').value;
+
+            filteredData = rawData.filter(row => {
+                return (year === 'all' || row['سال'] === year) &&
+                       (season === 'all' || row['فصل'] === season) &&
+                       (month === 'all' || row['ماه'] === month) &&
+                       (province === 'all' || row['استان'] === province) &&
+                       (license === 'all' || row['نوع پروانه'] === license) &&
+                       (subject === 'all' || row['موضوع شكايت'] === subject) &&
+                       (operator === 'all' || row['اپراتور'] === operator);
+            });
+
+            updateKPIs();
+            updateCharts();
+        }
+
+        function resetFilters() {
+            document.querySelectorAll('select').forEach(s => s.value = 'all');
+            applyFilters();
+        }
+
+        function updateKPIs() {
+            document.getElementById('k1').innerText = filteredData.length.toLocaleString('fa-IR');
+            const avgTime = filteredData.reduce((acc, curr) => acc + (curr['زمان'] || 0), 0) / (filteredData.length || 1) / 8;
+            document.getElementById('k2').innerText = avgTime.toFixed(1);
+            const onTime = filteredData.filter(r => r['زمان'] > 0 && r['زمان'] <= r['مهلت پاسخگويي منطقه (ساعت كاري)']).length;
+            document.getElementById('k3').innerText = ((onTime / (filteredData.length || 1)) * 100).toFixed(1) + "%";
+            const satisfied = filteredData.filter(r => ['زياد', 'بسيار زياد'].includes(r['ميزان رضايت مشتركين'])).length;
+            document.getElementById('k4').innerText = ((satisfied / (filteredData.length || 1)) * 100).toFixed(1) + "%";
+        }
+
+        function updateCharts() {
             Object.values(charts).forEach(c => c.destroy());
             
-            // Chart 1: Monthly
-            let m = {};
-            filtered.forEach(r => m[r['ماه']] = (m[r['ماه']]||0)+1);
-            let mOrder = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
-            let mLabels = Object.keys(m).sort((a,b)=>mOrder.indexOf(a)-mOrder.indexOf(b));
-            charts.c1 = new Chart(document.getElementById('c1'), {type:'line', data:{labels:mLabels, datasets:[{label:'شکایات', data:mLabels.map(l=>m[l]), borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,0.1)', fill:true}]}});
+            const monthlyData = {};
+            filteredData.forEach(r => { let m = r['ماه'] || "نامشخص"; monthlyData[m] = (monthlyData[m]||0)+1; });
+            const labels = Object.keys(monthlyData).sort((a,b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+            charts.c1 = new Chart(document.getElementById('c1'), {type:'line', data:{labels: labels, datasets:[{label:'شکایات', data:labels.map(l=>monthlyData[l]), borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,0.1)', fill:true, tension:0.3}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}});
 
-            // Chart 2: Subjects
-            let sub = {};
-            filtered.forEach(r => sub[r['موضوع شكايت']] = (sub[r['موضوع شكايت']]||0)+1);
-            let topSub = Object.entries(sub).sort((a,b)=>b[1]-a[1]).slice(0,7);
-            charts.c2 = new Chart(document.getElementById('c2'), {type:'bar', data:{labels:topSub.map(s=>s[0]), datasets:[{data:topSub.map(s=>s[1]), backgroundColor:'#10b981'}]}, options:{indexAxis:'y', plugins:{legend:{display:false}}}});
+            const subjectData = {};
+            filteredData.forEach(r => { let s = r['موضوع شكايت'] || "نامشخص"; subjectData[s] = (subjectData[s]||0)+1; });
+            const topSubjects = Object.entries(subjectData).sort((a,b)=>b[1]-a[1]).slice(0,10);
+            charts.c2 = new Chart(document.getElementById('c2'), {type:'bar', data:{labels:topSubjects.map(s=>s[0]), datasets:[{data:topSubjects.map(s=>s[1]), backgroundColor:'#10b981'}]}, options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}});
 
-            // Chart 3: Operators
-            let op = {};
-            filtered.forEach(r => { if(!op[r['اپراتور']]) op[r['اپراتور']]={c:0,t:0}; op[r['اپراتور']].c++; op[r['اپراتور']].t+=r.زمان; });
-            let opL = Object.keys(op);
-            charts.c3 = new Chart(document.getElementById('c3'), {type:'bar', data:{labels:opL, datasets:[{label:'تعداد', data:opL.map(l=>op[l].c), backgroundColor:'#3b82f6'}, {label:'زمان', data:opL.map(l=>op[l].t/op[l].c), backgroundColor:'#ec4899'}]}});
+            const provData = {};
+            filteredData.forEach(r => { let p = r['استان'] || "نامشخص"; provData[p] = (provData[p]||0)+1; });
+            const topProv = Object.entries(provData).sort((a,b)=>b[1]-a[1]).slice(0,8);
+            charts.c3 = new Chart(document.getElementById('c3'), {type:'doughnut', data:{labels:topProv.map(p=>p[0]), datasets:[{data:topProv.map(p=>p[1]), backgroundColor:['#ef4444','#f97316','#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4','#3b82f6']}]}}, options:{responsive:true, maintainAspectRatio:false}});
+
+            const opData = {};
+            filteredData.forEach(r => { if(!opData[r['اپراتور']]) opData[r['اپراتور']]={c:0,t:0}; opData[r['اپراتور']].c++; opData[r['اپراتور']].t+=r.زمان; });
+            const opL = Object.keys(opData);
+            charts.c4 = new Chart(document.getElementById('c4'), {type:'bar', data:{labels:opL, datasets:[{label:'تعداد', data:opL.map(l=>opData[l].c), backgroundColor:'#3b82f6', yAxisID:'y'}, {label:'زمان', data:opL.map(l=>(opData[l].t/opData[l].c).toFixed(0)), backgroundColor:'#ec4899', yAxisID:'y1'}]}, options:{responsive:true, maintainAspectRatio:false, scales:{y:{type:'linear',position:'left'}, y1:{type:'linear',position:'right',grid:{drawOnChartArea:false}}}}});
+
+            const timeData = filteredData.map(r => r['زمان'] / 8).filter(t => t > 0);
+            charts.c5 = new Chart(document.getElementById('c5'), {type:'bar', data:{labels:['1-3','4-6','7-10','11-15','16+'], datasets:[{label:'تعداد', data:[timeData.filter(t=>t<=3).length, timeData.filter(t=>t>3&&t<=6).length, timeData.filter(t=>t>6&&t<=10).length, timeData.filter(t=>t>10&&t<=15).length, timeData.filter(t=>t>15).length], backgroundColor:'#f59e0b'}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}});
         }
     </script>
 </body>
